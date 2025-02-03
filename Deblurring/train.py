@@ -46,13 +46,14 @@ train_dir = opt.TRAINING.TRAIN_DIR
 val_dir   = opt.TRAINING.VAL_DIR
 
 ######### Model ###########
+print("Creating model")
 model_restoration = MPRNet()
 model_restoration.cuda()
 
 device_ids = [i for i in range(torch.cuda.device_count())]
 if torch.cuda.device_count() > 1:
   print("\n\nLet's use", torch.cuda.device_count(), "GPUs!\n\n")
-
+print("Chose devices")
 
 new_lr = opt.OPTIM.LR_INITIAL
 
@@ -88,10 +89,10 @@ criterion_edge = losses.EdgeLoss()
 
 ######### DataLoaders ###########
 train_dataset = get_training_data(train_dir, {'patch_size':opt.TRAINING.TRAIN_PS})
-train_loader = DataLoader(dataset=train_dataset, batch_size=opt.OPTIM.BATCH_SIZE, shuffle=True, num_workers=16, drop_last=False, pin_memory=True)
+train_loader = DataLoader(dataset=train_dataset, batch_size=opt.OPTIM.BATCH_SIZE, shuffle=True, num_workers=4, drop_last=False, pin_memory=True)
 
 val_dataset = get_validation_data(val_dir, {'patch_size':opt.TRAINING.VAL_PS})
-val_loader = DataLoader(dataset=val_dataset, batch_size=16, shuffle=False, num_workers=8, drop_last=False, pin_memory=True)
+val_loader = DataLoader(dataset=val_dataset, batch_size=2, shuffle=False, num_workers=4, drop_last=False, pin_memory=True)
 
 print('===> Start Epoch {} End Epoch {}'.format(start_epoch,opt.OPTIM.NUM_EPOCHS + 1))
 print('===> Loading datasets')
@@ -117,8 +118,9 @@ for epoch in range(start_epoch, opt.OPTIM.NUM_EPOCHS + 1):
         restored = model_restoration(input_)
  
         # Compute loss at each stage
-        loss_char = torch.sum([criterion_char(restored[j],target) for j in range(len(restored))])
-        loss_edge = torch.sum([criterion_edge(restored[j],target) for j in range(len(restored))])
+        loss_char = sum(criterion_char(restored[j], target) for j in range(len(restored)))
+        loss_edge = sum(criterion_edge(restored[j], target) for j in range(len(restored)))
+
         loss = (loss_char) + (0.05*loss_edge)
        
         loss.backward()
